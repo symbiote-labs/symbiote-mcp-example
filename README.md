@@ -14,6 +14,9 @@ Python 3.12.12 and FastMCP 3.4.7; the dependency versions are recorded in `uv.lo
 These requirements apply to the MCP server; the standalone Symbiote CLI bundles
 its own runtime.
 
+Studios using Rez can package both the CLI and MCP server; see
+[Studio packaging](STUDIO_PACKAGING.md#symbiote-cli).
+
 On macOS or Linux, install the [Symbiote CLI](https://github.com/symbiote-labs/symbiote-cli-dist):
 
 ```sh
@@ -106,7 +109,7 @@ If the connection drops, run the start command again.
 Run the microagent on a computer that can reach Symbiote and the system your
 integration uses. Set `command` to start your MCP server with the dependencies
 and environment it needs. This can be an installed executable or a launcher
-script; use absolute paths.
+script; use absolute paths unless your environment manager supplies PATH.
 
 See [Studio packaging](STUDIO_PACKAGING.md) for Rez, Conda, and container setups.
 

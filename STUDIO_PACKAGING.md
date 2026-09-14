@@ -31,6 +31,8 @@ Linux/macOS; use your platform's launcher conventions on Windows.
 
 ## Rez
 
+### MCP server
+
 If you already package Python tools with Rez, package the MCP server the same
 way, with the runtime requirements above.
 
@@ -79,16 +81,107 @@ provide a `rez-build` recipe.
 In `agent-config.yaml`, replace the MCP server's `command`:
 
 ```yaml
-command: '"/path/to/rez" env -q --norc symbiote_hello_world-0.1.0 -- symbiote-hello-world'
+command: symbiote-hello-world
 ```
 
-The CLI launches the server inside the resolved environment. It does not need
-to run inside that environment itself. `-q --norc` reduces shell startup output;
-your package commands and launcher must also leave stdout clean.
+Start the CLI inside the MCP package's environment so the server inherits its
+PATH, Python and API dependencies. If the CLI is already installed:
+
+```sh
+rez env -q --norc symbiote_hello_world-0.1.0 -- /path/to/symbiote --profile demo microagent start --config /path/to/agent-config.yaml
+```
+
+The bare `symbiote-hello-world` command is intentional: Rez supplies its PATH.
+Avoid putting `rez env` in the MCP `command`: with Rez 3.4.0 and CLI 2.1.1,
+discovery cleanup can terminate the proxy through Rez's process-group signal
+handler. Launch the server directly from the already resolved environment.
 
 See Rez's [package definitions](https://rez.readthedocs.io/en/stable/package_definition.html),
 [environment commands](https://rez.readthedocs.io/en/stable/package_commands.html),
 and [`rez env` reference](https://rez.readthedocs.io/en/stable/commands/rez-env.html).
+
+### Symbiote CLI
+
+Studios can also distribute the CLI as a Rez package. Use the
+[published standalone release](https://github.com/symbiote-labs/symbiote-cli-dist/releases/tag/cli-v2.1.1)
+and keep the **whole extracted directory**, including `_internal`. The executable
+alone is not enough. This package needs no Rez Python or FastMCP dependency.
+
+Here is an installed package for Apple Silicon macOS:
+
+```text
+/studio/packages/symbiote_cli/2.1.1/
+  package.py
+  platform-osx/arch-arm64/cli/
+    symbiote
+    _internal/
+```
+
+Create `package.py` at the version directory:
+
+```python
+name = "symbiote_cli"
+version = "2.1.1"
+variants = [["platform-osx", "arch-arm64"]]
+tools = ["symbiote"]
+
+
+def commands():
+    env.PATH.prepend("{root}/cli")
+```
+
+Download and verify the payload, then extract it into that variant:
+
+```sh
+cli_target=aarch64-apple-darwin
+cli_variant=/studio/packages/symbiote_cli/2.1.1/platform-osx/arch-arm64
+cli_asset="symbiote-2.1.1-${cli_target}.tar.gz"
+cli_release=https://github.com/symbiote-labs/symbiote-cli-dist/releases/download/cli-v2.1.1
+cli_download=$(mktemp -d)
+(
+  set -eu
+  cd "$cli_download"
+  curl -fsSLO "$cli_release/$cli_asset"
+  curl -fsSLO "$cli_release/$cli_asset.sha256"
+  shasum -a 256 -c "$cli_asset.sha256"
+  mkdir -p "$cli_variant/cli"
+  tar -xzf "$cli_asset" --strip-components=1 -C "$cli_variant/cli"
+)
+```
+
+On Linux, `sha256sum -c` can replace `shasum -a 256 -c`. Use a fresh destination
+for each release. Keep downloads and credentials outside the package.
+
+For other hosts, change the variant in `package.py`, its directory, and
+`cli_target` together:
+
+| Host | Variant requirements | Release target |
+| --- | --- | --- |
+| macOS Apple Silicon | `platform-osx`, `arch-arm64` | `aarch64-apple-darwin` |
+| macOS Intel | `platform-osx`, `arch-x86_64` | `x86_64-apple-darwin` |
+| Linux Intel/AMD | `platform-linux`, `arch-x86_64` | `x86_64-unknown-linux-gnu` |
+| Linux ARM64 | `platform-linux`, `arch-aarch64` | `aarch64-unknown-linux-gnu` |
+
+Match the platform and architecture names to your studio's Rez packages. A
+shared package can list several [variants](https://rez.readthedocs.io/en/stable/variants.html),
+with a matching payload directory for each. Validate each build on its target OS.
+
+With `/studio/packages` in your Rez search path, check the CLI and log in:
+
+```sh
+rez env -q --norc symbiote_cli-2.1.1 -- symbiote --profile demo version
+rez env -q --norc symbiote_cli-2.1.1 -- symbiote --profile demo login --server https://symbiote.example.com --agent-path /agent
+rez env -q --norc symbiote_cli-2.1.1 symbiote_hello_world-0.1.0 -- symbiote --profile demo microagent start --config /path/to/agent-config.yaml
+```
+
+Use the README's server routing guidance and `command: symbiote-hello-world`
+from above. The start command resolves both packages; the MCP server inherits
+that environment. Login stays in the user's local Symbiote profile; never
+include it in the shared Rez package. Use the same OS user and profile when
+starting the proxy and checking it from another terminal.
+
+Repeat the README's status and chat commands with
+`rez env -q --norc symbiote_cli-2.1.1 --` before `symbiote`.
 
 ## Conda or micromamba
 
