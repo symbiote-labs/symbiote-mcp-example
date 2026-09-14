@@ -1,0 +1,12 @@
+agent:
+  name: hello-world
+
+mcp_servers:
+  example:
+    type: stdio
+    # Replace with the absolute path printed by:
+    # uv run python -c 'import shutil; print(shutil.which("symbiote-hello-world"))'
+    # Keep the double quotes inside the YAML string if the path contains spaces.
+    command: '"/absolute/path/to/symbiote-mcp-example/.venv/bin/symbiote-hello-world"'
+
+allowed_paths: []

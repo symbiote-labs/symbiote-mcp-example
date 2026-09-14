@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "symbiote-mcp-example"
+version = "0.1.0"
+description = "A hello world MCP integration for the Symbiote CLI microagent"
+requires-python = ">=3.11"
+dependencies = ["fastmcp>=3.2,<4"]
+
+[project.scripts]
+symbiote-hello-world = "symbiote_mcp_example:main"
+
+[dependency-groups]
+dev = ["ruff>=0.15,<1"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
